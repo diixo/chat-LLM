@@ -16,75 +16,6 @@ This document is intended as implementation guidance for Copilot or another codi
 
 ---
 
-# 1. Use ParlAI only as a data loader
-
-Do not use ParlAI as the main training framework.
-
-Use ParlAI only for these purposes:
-
-- Downloading the MSC dataset.
-- Reading examples from the `msc` task.
-- Reading examples from the `msc:PersonaSummary` task if available.
-- Exporting raw examples into stable JSONL files.
-- Keeping the rest of the project independent from ParlAI.
-
-The project should not depend on ParlAI during model training. ParlAI should only be needed during dataset export.
-
-Recommended project structure:
-
-```text
-project_root/
-  data/
-    raw/
-      msc/
-        train.jsonl
-        valid.jsonl
-        test.jsonl
-        persona_summary_train.jsonl
-        persona_summary_valid.jsonl
-    processed/
-      msc_memory_summary/
-        train.jsonl
-        valid.jsonl
-      msc_response_sft/
-        train.jsonl
-        valid.jsonl
-  scripts/
-    export_msc_from_parlai.py
-    build_memory_summary_dataset.py
-    build_response_sft_dataset.py
-  src/
-    data/
-      schemas.py
-      formatting.py
-      tokenization.py
-```
-
----
-
-# 2. Install ParlAI for export only
-
-Create an isolated environment or install ParlAI only in a data-preparation environment.
-
-```bash
-pip install parlai
-```
-
-Check that the MSC task is available:
-
-```bash
-parlai display_data -t msc
-```
-
-Check the persona summary task:
-
-```bash
-parlai display_data -t msc:PersonaSummary
-```
-
-The export script should not assume that the exact printed format from `display_data` is stable. Use the ParlAI Python API when possible.
-
----
 
 # 3. Export MSC examples into JSONL
 
@@ -101,15 +32,9 @@ The script should:
    - `valid`
    - `test`
 
-2. Accept task argument:
-   - `msc`
-   - `msc:PersonaSummary`
+2. Normalize each example into a project-owned JSONL schema.
 
-3. Load examples through ParlAI.
-
-4. Normalize each example into a project-owned JSONL schema.
-
-5. Write one JSON object per line.
+3. Write one JSON object per line.
 
 Recommended CLI:
 

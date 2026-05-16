@@ -4,7 +4,7 @@
 
 ## Task Description
 
-The goal is to fine-tune a small LLM (e.g. Qwen3-4B) to reliably extract
+The goal is to fine-tune a small LLM (e.g. GPT-2) to reliably extract
 explicit user facts from a conversation turn and return them as a JSON array.
 
 ### Concrete task
@@ -45,13 +45,4 @@ The model must output:
 | **UltraChat** | Large-scale synthetic multi-turn dialogues. Good base for augmentation. | https://huggingface.co/datasets/stingning/ultrachat |
 
 ---
-
-## Getting The Data Without ParlAI
-
-You do not need to install ParlAI to work with either dataset.
-
-
-### PersonaChat
-
-`datasets.load_dataset("bavard/personachat_truecased")`.
 
