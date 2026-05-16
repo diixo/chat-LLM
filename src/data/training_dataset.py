@@ -129,10 +129,12 @@ class ProcessedSFTCollator:
         *,
         pad_to_multiple_of: int | None = None,
         return_tensors: str = "pt",
+        include_metadata: bool = False,
     ) -> None:
         self.tokenizer = tokenizer
         self.pad_to_multiple_of = pad_to_multiple_of
         self.return_tensors = return_tensors
+        self.include_metadata = include_metadata
 
     def __call__(self, features: Sequence[dict[str, Any]]) -> dict[str, Any]:
         if not features:
@@ -164,13 +166,15 @@ class ProcessedSFTCollator:
             metadata.append(feature["metadata"])
 
         batch: dict[str, Any] = {
-            "id": example_ids,
-            "task": tasks,
-            "metadata": metadata,
             "input_ids": padded_input_ids,
             "attention_mask": padded_attention_masks,
             "labels": padded_labels,
         }
+
+        if self.include_metadata:
+            batch["id"] = example_ids
+            batch["task"] = tasks
+            batch["metadata"] = metadata
 
         if self.return_tensors == "pt":
             try:

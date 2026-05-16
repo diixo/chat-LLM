@@ -1,0 +1,53 @@
+Stage 1 status
+
+Completed
+
+- Added local raw exporters:
+	- scripts/export_msc_dialogue.py
+	- scripts/export_msc_personasummary.py
+- Added processed dataset builders:
+	- scripts/build_memory_summary_dataset.py
+	- scripts/build_response_sft_dataset.py
+- Added shared helpers for JSONL parsing, speaker orientation and memory-fact normalization:
+	- scripts/msc_processed_utils.py
+- Added processed dataset loader and collator with prompt masking by target_start_marker and pad masking by -100:
+	- src/data/training_dataset.py
+- Fixed gold-memory response building so require-memory does not let empty memory examples into Stage B.
+- Fixed memory fact rewriting so the generated Stage A target is cleaner and does not leave broken first-person fragments such as "from my".
+
+Full data build status
+
+- Raw dialogue export train: 9001 examples
+- Raw dialogue export valid: 2000 examples
+- Raw persona summary export train: 10285 examples
+- Raw persona summary export valid: 2000 examples
+- Processed memory summary train: 20466 examples, skipped 104
+- Processed memory summary valid: 3972 examples, skipped 28
+- Processed response SFT train: 96067 examples, memory hits 17913, memory misses 89
+- Processed response SFT valid: 21505 examples, memory hits 3972, memory misses 28
+- Verified that final response_sft train/valid outputs do not contain empty input.memory when built with require-memory.
+
+Training preparation
+
+- Fixed the pipeline special token list in code:
+	- <|user|>
+	- <|assistant|>
+	- <|system|>
+	- <|memory|>
+	- <|dialog|>
+	- <|task|>
+- Added token registration and stability checks:
+	- src/data/special_tokens.py
+	- scripts/verify_special_tokens.py
+- Added a real Hugging Face training entrypoint that uses the processed JSONL dataset and collator:
+	- scripts/train_sft.py
+- train_sft.py registers the pipeline special tokens, verifies tokenizer stability before training, resizes embeddings if needed, and saves a pipeline_special_tokens.json manifest into the output directory.
+
+Recommended next command pattern
+
+- Verify tokenizer:
+	python scripts/verify_special_tokens.py --model-name-or-path gpt2
+- Train Stage A:
+	python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_memory_summary/train.jsonl --valid-file data/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
+- Train Stage B:
+	python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_response_sft/train.jsonl --valid-file data/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
