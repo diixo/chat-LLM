@@ -6,11 +6,11 @@ Build a data preparation and training pipeline based on the ParlAI MSC dataset.
 
 The target architecture is a two-stage memory-based chat training pipeline:
 
-1. Use ParlAI only as a dataset loader.
-2. Export MSC examples into project-local JSONL files.
-3. Prepare the exported data into custom training formats.
-4. Train a model that converts dialogue history into compact memory summaries.
-5. Train a chat model that answers using `memory + current_dialog -> assistant_response`.
+
+1. Export MSC examples into project-local JSONL files.
+2. Prepare the exported data into custom training formats.
+3. Train a model that converts dialogue history into compact memory summaries.
+4. Train a chat model that answers using `memory + current_dialog -> assistant_response`.
 
 This document is intended as implementation guidance for Copilot or another coding assistant inside the project.
 
