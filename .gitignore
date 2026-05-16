@@ -16,6 +16,7 @@ env.bak/
 log.txt
 
 
+output/
 models/
 datasets/
 train_products/
