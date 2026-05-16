@@ -121,6 +121,9 @@ def build_dataset(args: argparse.Namespace) -> int:
                         if args.require_memory:
                             continue
 
+                if args.require_memory and not memory_items:
+                    continue
+
                 dialogue_history: list[dict[str, str]] = []
                 assistant_speaker_index = next(
                     (index for index in speaker_indices if index != target_user_speaker_index),
