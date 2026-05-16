@@ -48,6 +48,6 @@ Recommended next command pattern
 - Verify tokenizer:
 	python scripts/verify_special_tokens.py --model-name-or-path gpt2
 - Train Stage A:
-	python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_memory_summary/train.jsonl --valid-file data/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
+	python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
 - Train Stage B:
-	python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_response_sft/train.jsonl --valid-file data/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
+	python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response

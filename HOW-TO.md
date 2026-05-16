@@ -7,6 +7,11 @@
 - Stage A: `previous_dialogue_history -> memory_summary`
 - Stage B: `memory_summary + current_dialogue -> assistant_response`
 
+Правило путей для этого репозитория:
+
+- `data/` = исходные данные, которые можно хранить в git
+- `datasets/` = генерируемые raw/processed артефакты пайплайна
+
 Общий поток такой:
 
 ```text
@@ -130,6 +135,7 @@ python scripts/verify_special_tokens.py --model-name-or-path gpt2
 ## Пошаговый запуск для этого репозитория
 
 Ниже приведён рекомендуемый порядок запуска именно для текущей структуры `c:\git\chat-LLM`.
+Исходный MSC остаётся в `data/`, а все генерируемые JSONL-файлы пишутся в `datasets/`.
 
 ### Шаг 1. Экспорт dialogue dataset в raw JSONL
 
@@ -144,14 +150,14 @@ python scripts/verify_special_tokens.py --model-name-or-path gpt2
 
 Выход:
 
-- `data/raw/msc/train.jsonl`
-- `data/raw/msc/valid.jsonl`
+- `datasets/raw/msc/train.jsonl`
+- `datasets/raw/msc/valid.jsonl`
 
 Команды:
 
 ```powershell
-python scripts/export_msc_dialogue.py --split train --output data/raw/msc/train.jsonl
-python scripts/export_msc_dialogue.py --split valid --output data/raw/msc/valid.jsonl
+python scripts/export_msc_dialogue.py --split train --output datasets/raw/msc/train.jsonl
+python scripts/export_msc_dialogue.py --split valid --output datasets/raw/msc/valid.jsonl
 ```
 
 Полезные параметры:
@@ -164,7 +170,7 @@ python scripts/export_msc_dialogue.py --split valid --output data/raw/msc/valid.
 Пример узкого теста:
 
 ```powershell
-python scripts/export_msc_dialogue.py --split train --session 2 --max-examples 100 --output data/raw/msc/dialogue_session_2_sample.jsonl
+python scripts/export_msc_dialogue.py --split train --session 2 --max-examples 100 --output datasets/raw/msc/dialogue_session_2_sample.jsonl
 ```
 
 ### Шаг 2. Экспорт persona summary dataset в raw JSONL
@@ -180,14 +186,14 @@ python scripts/export_msc_dialogue.py --split train --session 2 --max-examples 1
 
 Выход:
 
-- `data/raw/msc/persona_summary_train.jsonl`
-- `data/raw/msc/persona_summary_valid.jsonl`
+- `datasets/raw/msc/persona_summary_train.jsonl`
+- `datasets/raw/msc/persona_summary_valid.jsonl`
 
 Команды:
 
 ```powershell
-python scripts/export_msc_personasummary.py --split train --output data/raw/msc/persona_summary_train.jsonl
-python scripts/export_msc_personasummary.py --split valid --output data/raw/msc/persona_summary_valid.jsonl
+python scripts/export_msc_personasummary.py --split train --output datasets/raw/msc/persona_summary_train.jsonl
+python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
 ```
 
 Полезные параметры:
@@ -200,7 +206,7 @@ python scripts/export_msc_personasummary.py --split valid --output data/raw/msc/
 Пример узкого теста:
 
 ```powershell
-python scripts/export_msc_personasummary.py --split train --session 1 --max-examples 100 --output data/raw/msc/persona_summary_session_1_sample.jsonl
+python scripts/export_msc_personasummary.py --split train --session 1 --max-examples 100 --output datasets/raw/msc/persona_summary_session_1_sample.jsonl
 ```
 
 ### Шаг 3. Построить Stage A dataset: memory summary
@@ -211,19 +217,19 @@ python scripts/export_msc_personasummary.py --split train --session 1 --max-exam
 
 Вход:
 
-- `data/raw/msc/persona_summary_train.jsonl`
-- `data/raw/msc/persona_summary_valid.jsonl`
+- `datasets/raw/msc/persona_summary_train.jsonl`
+- `datasets/raw/msc/persona_summary_valid.jsonl`
 
 Выход:
 
-- `data/processed/msc_memory_summary/train.jsonl`
-- `data/processed/msc_memory_summary/valid.jsonl`
+- `datasets/processed/msc_memory_summary/train.jsonl`
+- `datasets/processed/msc_memory_summary/valid.jsonl`
 
 Команды:
 
 ```powershell
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_train.jsonl --output data/processed/msc_memory_summary/train.jsonl
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_valid.jsonl --output data/processed/msc_memory_summary/valid.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
 ```
 
 Полезные параметры:
@@ -245,26 +251,26 @@ python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summ
 
 Вход:
 
-- `data/raw/msc/train.jsonl`
-- `data/raw/msc/valid.jsonl`
-- `data/processed/msc_memory_summary/train.jsonl`
-- `data/processed/msc_memory_summary/valid.jsonl`
+- `datasets/raw/msc/train.jsonl`
+- `datasets/raw/msc/valid.jsonl`
+- `datasets/processed/msc_memory_summary/train.jsonl`
+- `datasets/processed/msc_memory_summary/valid.jsonl`
 
 Выход:
 
-- `data/processed/msc_response_sft/train.jsonl`
-- `data/processed/msc_response_sft/valid.jsonl`
+- `datasets/processed/msc_response_sft/train.jsonl`
+- `datasets/processed/msc_response_sft/valid.jsonl`
 
 Команды:
 
 ```powershell
-python scripts/build_response_sft_dataset.py --input data/raw/msc/train.jsonl --memory data/processed/msc_memory_summary/train.jsonl --require-memory --output data/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --memory data/processed/msc_memory_summary/valid.jsonl --require-memory --output data/processed/msc_response_sft/valid.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 Полезные параметры:
 
-- `--memory data/processed/msc_memory_summary/train.jsonl`
+- `--memory datasets/processed/msc_memory_summary/train.jsonl`
 - `--require-memory`
 - `--max-examples 1000`
 
@@ -286,14 +292,14 @@ python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --
 Если нужно полностью собрать все train/valid данные, запускай так:
 
 ```powershell
-python scripts/export_msc_dialogue.py --split train --output data/raw/msc/train.jsonl
-python scripts/export_msc_dialogue.py --split valid --output data/raw/msc/valid.jsonl
-python scripts/export_msc_personasummary.py --split train --output data/raw/msc/persona_summary_train.jsonl
-python scripts/export_msc_personasummary.py --split valid --output data/raw/msc/persona_summary_valid.jsonl
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_train.jsonl --output data/processed/msc_memory_summary/train.jsonl
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_valid.jsonl --output data/processed/msc_memory_summary/valid.jsonl
-python scripts/build_response_sft_dataset.py --input data/raw/msc/train.jsonl --memory data/processed/msc_memory_summary/train.jsonl --require-memory --output data/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --memory data/processed/msc_memory_summary/valid.jsonl --require-memory --output data/processed/msc_response_sft/valid.jsonl
+python scripts/export_msc_dialogue.py --split train --output datasets/raw/msc/train.jsonl
+python scripts/export_msc_dialogue.py --split valid --output datasets/raw/msc/valid.jsonl
+python scripts/export_msc_personasummary.py --split train --output datasets/raw/msc/persona_summary_train.jsonl
+python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 ## Уже полученные размеры датасетов
@@ -333,8 +339,8 @@ python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --
 
 Вход:
 
-- `data/processed/msc_memory_summary/train.jsonl`
-- `data/processed/msc_memory_summary/valid.jsonl`
+- `datasets/processed/msc_memory_summary/train.jsonl`
+- `datasets/processed/msc_memory_summary/valid.jsonl`
 - имя базовой модели Hugging Face
 
 Выход:
@@ -345,7 +351,7 @@ python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --
 Пример команды:
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_memory_summary/train.jsonl --valid-file data/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
 ```
 
 Часто используемые параметры:
@@ -384,8 +390,8 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processe
 
 Вход:
 
-- `data/processed/msc_response_sft/train.jsonl`
-- `data/processed/msc_response_sft/valid.jsonl`
+- `datasets/processed/msc_response_sft/train.jsonl`
+- `datasets/processed/msc_response_sft/valid.jsonl`
 - имя базовой модели Hugging Face
 
 Выход:
@@ -396,7 +402,7 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processe
 Пример команды:
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_response_sft/train.jsonl --valid-file data/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
 
 ## Быстрая схема по стадиям
@@ -406,9 +412,9 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processe
 ```text
 msc_personasummary txt
 -> export_msc_personasummary.py
--> data/raw/msc/persona_summary_*.jsonl
+-> datasets/raw/msc/persona_summary_*.jsonl
 -> build_memory_summary_dataset.py
--> data/processed/msc_memory_summary/*.jsonl
+-> datasets/processed/msc_memory_summary/*.jsonl
 -> training_dataset.py
 -> train_sft.py
 -> memory summarizer model
@@ -419,10 +425,10 @@ msc_personasummary txt
 ```text
 msc_dialogue txt
 -> export_msc_dialogue.py
--> data/raw/msc/*.jsonl
-+ gold memory from data/processed/msc_memory_summary/*.jsonl
+-> datasets/raw/msc/*.jsonl
++ gold memory from datasets/processed/msc_memory_summary/*.jsonl
 -> build_response_sft_dataset.py
--> data/processed/msc_response_sft/*.jsonl
+-> datasets/processed/msc_response_sft/*.jsonl
 -> training_dataset.py
 -> train_sft.py
 -> response model
@@ -441,29 +447,29 @@ python scripts/verify_special_tokens.py --model-name-or-path gpt2
 2. Собрать raw файлы:
 
 ```powershell
-python scripts/export_msc_dialogue.py --split train --output data/raw/msc/train.jsonl
-python scripts/export_msc_dialogue.py --split valid --output data/raw/msc/valid.jsonl
-python scripts/export_msc_personasummary.py --split train --output data/raw/msc/persona_summary_train.jsonl
-python scripts/export_msc_personasummary.py --split valid --output data/raw/msc/persona_summary_valid.jsonl
+python scripts/export_msc_dialogue.py --split train --output datasets/raw/msc/train.jsonl
+python scripts/export_msc_dialogue.py --split valid --output datasets/raw/msc/valid.jsonl
+python scripts/export_msc_personasummary.py --split train --output datasets/raw/msc/persona_summary_train.jsonl
+python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
 ```
 
 3. Собрать processed Stage A и Stage B:
 
 ```powershell
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_train.jsonl --output data/processed/msc_memory_summary/train.jsonl
-python scripts/build_memory_summary_dataset.py --input data/raw/msc/persona_summary_valid.jsonl --output data/processed/msc_memory_summary/valid.jsonl
-python scripts/build_response_sft_dataset.py --input data/raw/msc/train.jsonl --memory data/processed/msc_memory_summary/train.jsonl --require-memory --output data/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input data/raw/msc/valid.jsonl --memory data/processed/msc_memory_summary/valid.jsonl --require-memory --output data/processed/msc_response_sft/valid.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
+python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 4. Обучить Stage A:
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_memory_summary/train.jsonl --valid-file data/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
 ```
 
 5. Обучить Stage B:
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file data/processed/msc_response_sft/train.jsonl --valid-file data/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
