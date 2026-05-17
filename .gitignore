@@ -15,8 +15,6 @@ env.bak/
 
 log.txt
 
-data/convai2/
-
 output/
 models/
 datasets/
