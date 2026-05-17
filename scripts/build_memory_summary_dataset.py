@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from msc_processed_utils import END_OF_TEXT, MEMORY_START_MARKER, available_speaker_indices, extract_memory_items_from_annotated_dialogue, iter_jsonl, orient_dialogue_turns, parse_session_number, render_dialogue_block, write_jsonl_record
+from msc_processed_utils import END_OF_TEXT, MEMORY_START_MARKER, available_speaker_indices, dedupe_preserve_order, extract_memory_items_from_annotated_dialogue, iter_jsonl, orient_dialogue_turns, parse_session_number, render_dialogue_block, rewrite_fact_to_user_perspective, split_fact_candidates, write_jsonl_record
 
 
 def parse_args() -> argparse.Namespace:
@@ -35,6 +35,28 @@ def build_text(previous_dialogue: list[dict[str, str]], memory_items: list[str])
     return text, target_text
 
 
+def extract_init_persona_fallback(
+    raw_metadata: dict[str, Any],
+    target_speaker_index: int,
+) -> list[str]:
+    init_personachat = raw_metadata.get("init_personachat") or {}
+    init_personas = init_personachat.get("init_personas") or init_personachat.get("personas") or []
+    if not isinstance(init_personas, list) or target_speaker_index >= len(init_personas):
+        return []
+
+    raw_persona_items = init_personas[target_speaker_index]
+    if not isinstance(raw_persona_items, list):
+        return []
+
+    rewritten_items = [
+        rewrite_fact_to_user_perspective(candidate)
+        for item in raw_persona_items
+        if isinstance(item, str)
+        for candidate in split_fact_candidates(item)
+    ]
+    return dedupe_preserve_order(rewritten_items)
+
+
 def build_record(
     raw_record: dict[str, Any],
     target_speaker_index: int,
@@ -47,6 +69,10 @@ def build_record(
 
     previous_dialogue = orient_dialogue_turns(annotated_dialogue, target_speaker_index)
     memory_items = extract_memory_items_from_annotated_dialogue(annotated_dialogue, target_speaker_index)
+    memory_source_kind = "annotated_dialogue"
+    if not memory_items:
+        memory_items = extract_init_persona_fallback(raw_metadata, target_speaker_index)
+        memory_source_kind = "init_personas" if memory_items else "missing"
     if not previous_dialogue or not memory_items:
         return None
 
@@ -77,6 +103,7 @@ def build_record(
             "source_session_number": source_session_number,
             "initial_data_id": raw_metadata.get("initial_data_id"),
             "target_speaker_index": target_speaker_index,
+            "memory_source_kind": memory_source_kind,
             "num_memory_items": len(memory_items),
             "num_dialog_turns": len(previous_dialogue),
             "followup": raw_metadata.get("followup"),
@@ -90,6 +117,8 @@ def build_dataset(args: argparse.Namespace) -> int:
 
     written_examples = 0
     skipped_examples = 0
+    annotated_hits = 0
+    init_persona_fallbacks = 0
 
     with args.output.open("w", encoding="utf-8") as output_handle:
         for raw_record in iter_jsonl(args.input):
@@ -100,7 +129,7 @@ def build_dataset(args: argparse.Namespace) -> int:
             for target_speaker_index in speaker_indices:
                 if args.max_examples is not None and written_examples >= args.max_examples:
                     print(f"Reached max examples limit ({args.max_examples}).")
-                    print_summary(args.output, written_examples, skipped_examples)
+                    print_summary(args.output, written_examples, skipped_examples, annotated_hits, init_persona_fallbacks)
                     return 0
 
                 processed_record = build_record(raw_record, target_speaker_index, written_examples + 1)
@@ -108,16 +137,30 @@ def build_dataset(args: argparse.Namespace) -> int:
                     skipped_examples += 1
                     continue
 
+                memory_source_kind = (processed_record.get("metadata") or {}).get("memory_source_kind")
+                if memory_source_kind == "annotated_dialogue":
+                    annotated_hits += 1
+                elif memory_source_kind == "init_personas":
+                    init_persona_fallbacks += 1
+
                 write_jsonl_record(output_handle, processed_record)
                 written_examples += 1
 
-    print_summary(args.output, written_examples, skipped_examples)
+    print_summary(args.output, written_examples, skipped_examples, annotated_hits, init_persona_fallbacks)
     return 0
 
 
-def print_summary(output_path: Path, written_examples: int, skipped_examples: int) -> None:
+def print_summary(
+    output_path: Path,
+    written_examples: int,
+    skipped_examples: int,
+    annotated_hits: int,
+    init_persona_fallbacks: int,
+) -> None:
     print(f"Wrote {written_examples} examples to {output_path.as_posix()}")
     print(f"Skipped {skipped_examples} examples")
+    print(f"Annotated memory hits: {annotated_hits}")
+    print(f"Init persona fallbacks: {init_persona_fallbacks}")
 
 
 def main() -> int:
