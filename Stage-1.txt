@@ -8,12 +8,14 @@ Completed
 - Added processed dataset builders:
 	- scripts/build_memory_summary_dataset.py
 	- scripts/build_response_sft_dataset.py
-- Added shared helpers for JSONL parsing, speaker orientation and memory-fact normalization:
+- Added shared helpers for JSONL parsing, speaker orientation, memory-fact normalization and common text normalization:
 	- scripts/msc_processed_utils.py
 - Added processed dataset loader and collator with prompt masking by target_start_marker and pad masking by -100:
 	- src/data/training_dataset.py
 - Fixed gold-memory response building so require-memory does not let empty memory examples into Stage B.
-- Fixed memory fact rewriting so the generated Stage A target is cleaner and does not leave broken first-person fragments such as "from my".
+- Fixed Stage A fallback so speaker orientations without annotated persona items use init_personas instead of being skipped.
+- Fixed text normalization so ConvAI2 session_1 and MSC no longer mix raw lowercase and case-sensitive text in processed JSONL.
+- Fixed memory fact rewriting so processed memory uses a consistent `The user ...` style instead of mixing `The user ...` and raw `I ...` fragments.
 
 Full data build status
 
@@ -21,11 +23,13 @@ Full data build status
 - Raw dialogue export valid: 2000 examples
 - Raw persona summary export train: 10285 examples
 - Raw persona summary export valid: 2000 examples
-- Processed memory summary train: 20466 examples, skipped 104
-- Processed memory summary valid: 3972 examples, skipped 28
-- Processed response SFT train: 96067 examples, memory hits 17913, memory misses 89
-- Processed response SFT valid: 21505 examples, memory hits 3972, memory misses 28
+- Processed memory summary train: 20570 examples, skipped 0, annotated hits 20466, init persona fallbacks 104
+- Processed memory summary valid: 4000 examples, skipped 0, annotated hits 3972, init persona fallbacks 28
+- Processed response SFT train: 227984 examples, skipped 0, memory hits 18002, memory misses 0, ConvAI2 hits 131438, ConvAI2 misses 0
+- Processed response SFT valid: 29456 examples, skipped 0, memory hits 4000, memory misses 0, ConvAI2 hits 7801, ConvAI2 misses 0
 - Verified that final response_sft train/valid outputs do not contain empty input.memory when built with require-memory.
+- Verified that ConvAI2 session_1 text no longer stays in raw lowercase relative to MSC after processed normalization.
+- Verified that memory facts no longer leave mixed forms like `I wear contacts.` next to `The user ...`; they are normalized to forms like `The user wears contacts.`.
 
 Training preparation
 

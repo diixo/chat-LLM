@@ -15,6 +15,21 @@ _SPEAKER_PATTERNS = (
     re.compile(r"^speaker\s+(\d+)$", re.IGNORECASE),
     re.compile(r"^bot_(\d+)$", re.IGNORECASE),
 )
+_PUNCTUATION_SPACING_FIXES: tuple[tuple[str, str], ...] = (
+    (" .", "."),
+    (" ,", ","),
+    (" ?", "?"),
+    (" !", "!"),
+    (" ' ", "'"),
+)
+_THIRD_PERSON_IRREGULAR_VERBS: dict[str, str] = {
+    "am": "is",
+    "are": "is",
+    "be": "is",
+    "do": "does",
+    "go": "goes",
+    "have": "has",
+}
 _FACT_REWRITES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^I've been\b", re.IGNORECASE), "The user has been"),
     (re.compile(r"^I am\b", re.IGNORECASE), "The user is"),
@@ -102,6 +117,42 @@ def normalize_whitespace(text: str | None) -> str:
     return " ".join(text.strip().split())
 
 
+def uppercase_first_character(text: str) -> str:
+    if not text:
+        return text
+    return text[0].upper() + text[1:]
+
+
+def normalize_reply_text(text: str | None, add_trailing_punctuation: bool = False) -> str:
+    cleaned = normalize_whitespace(text)
+    if not cleaned:
+        return ""
+
+    normalized = cleaned.lower()
+    for spaced, compact in _PUNCTUATION_SPACING_FIXES:
+        normalized = normalized.replace(compact, spaced).replace("  ", " ")
+
+    tokens = normalized.split(" ")
+    for index, token in enumerate(tokens):
+        if not token:
+            continue
+        if index == 0:
+            tokens[index] = uppercase_first_character(token)
+        elif token in {"i", "i'm", "i've", "i'll", "i'd"}:
+            tokens[index] = uppercase_first_character(token)
+        elif token in {"?", ".", "!"} and index + 1 < len(tokens):
+            tokens[index + 1] = uppercase_first_character(tokens[index + 1])
+
+    normalized = f" {' '.join(tokens)} "
+    for spaced, compact in _PUNCTUATION_SPACING_FIXES:
+        normalized = normalized.replace(spaced, compact)
+
+    normalized = normalize_whitespace(normalized)
+    if add_trailing_punctuation and normalized and normalized[-1] not in '!.?)"\'':
+        normalized += "."
+    return normalized
+
+
 def ensure_terminal_punctuation(text: str) -> str:
     cleaned = normalize_whitespace(text)
     if not cleaned:
@@ -157,7 +208,7 @@ def orient_dialogue_turns(
     oriented_turns: list[dict[str, str]] = []
 
     for turn in turns:
-        content = normalize_whitespace(turn.get("text") or turn.get("content"))
+        content = normalize_reply_text(turn.get("text") or turn.get("content"))
         if not content:
             continue
 
@@ -188,19 +239,48 @@ def split_fact_candidates(text: str | None) -> list[str]:
     return [part for part in parts if part]
 
 
+def conjugate_third_person_singular(verb: str) -> str:
+    lowered = verb.lower()
+    if lowered in _THIRD_PERSON_IRREGULAR_VERBS:
+        return _THIRD_PERSON_IRREGULAR_VERBS[lowered]
+    if lowered.endswith("y") and len(lowered) > 1 and lowered[-2] not in "aeiou":
+        return f"{lowered[:-1]}ies"
+    if lowered.endswith(("s", "sh", "ch", "x", "z", "o")):
+        return f"{lowered}es"
+    return f"{lowered}s"
+
+
+def rewrite_generic_first_person_fact(text: str) -> str | None:
+    match = re.match(r"^I\s+([A-Za-z']+)(.*)$", text, flags=re.IGNORECASE)
+    if not match:
+        return None
+
+    verb = match.group(1)
+    remainder = match.group(2) or ""
+    conjugated_verb = conjugate_third_person_singular(verb)
+    return f"The user {conjugated_verb}{remainder}"
+
+
 def rewrite_fact_to_user_perspective(fact: str) -> str:
     cleaned = normalize_whitespace(fact)
     if not cleaned:
         return ""
     if cleaned.lower().startswith("the user"):
-        return ensure_terminal_punctuation(rewrite_embedded_first_person_pronouns(cleaned))
+        rewritten = rewrite_embedded_first_person_pronouns(cleaned)
+        return ensure_terminal_punctuation(normalize_reply_text(rewritten))
 
     for pattern, replacement in _FACT_REWRITES:
         if pattern.search(cleaned):
             rewritten = pattern.sub(replacement, cleaned, count=1)
-            return ensure_terminal_punctuation(rewrite_embedded_first_person_pronouns(rewritten))
+            rewritten = rewrite_embedded_first_person_pronouns(rewritten)
+            return ensure_terminal_punctuation(normalize_reply_text(rewritten))
 
-    return ensure_terminal_punctuation(cleaned)
+    generic_rewrite = rewrite_generic_first_person_fact(cleaned)
+    if generic_rewrite is not None:
+        generic_rewrite = rewrite_embedded_first_person_pronouns(generic_rewrite)
+        return ensure_terminal_punctuation(normalize_reply_text(generic_rewrite))
+
+    return ensure_terminal_punctuation(normalize_reply_text(cleaned))
 
 
 def rewrite_embedded_first_person_pronouns(text: str) -> str:

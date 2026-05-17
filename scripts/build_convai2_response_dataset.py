@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from msc_processed_utils import ASSISTANT_START_MARKER, END_OF_TEXT, dedupe_preserve_order, normalize_whitespace, render_dialogue_block, rewrite_fact_to_user_perspective, write_jsonl_record
+from msc_processed_utils import ASSISTANT_START_MARKER, END_OF_TEXT, dedupe_preserve_order, normalize_reply_text, normalize_whitespace, render_dialogue_block, rewrite_fact_to_user_perspective, write_jsonl_record
 
 
 CONVAI2_SPLITS: tuple[tuple[str, Path, Path], ...] = (
@@ -60,7 +60,7 @@ def load_episodes(input_path: Path) -> list[dict[str, Any]]:
 
             content = content.strip()
             if content.startswith("your persona: "):
-                persona_text = normalize_whitespace(content[len("your persona: ") :])
+                persona_text = normalize_reply_text(content[len("your persona: ") :])
                 if persona_text:
                     persona_lines.append(persona_text)
                 continue
@@ -69,8 +69,8 @@ def load_episodes(input_path: Path) -> list[dict[str, Any]]:
             if len(fields) < 2:
                 raise ValueError(f"Expected a dialogue pair in {input_path.as_posix()}: {stripped_line}")
 
-            user_text = normalize_whitespace(fields[0])
-            assistant_text = normalize_whitespace(fields[1])
+            user_text = normalize_reply_text(fields[0])
+            assistant_text = normalize_reply_text(fields[1])
             if not user_text or not assistant_text:
                 continue
 
@@ -157,7 +157,7 @@ def build_record(
     if not isinstance(raw_pair, tuple) or len(raw_pair) != 2:
         return None
 
-    assistant_response = normalize_whitespace(raw_pair[1])
+    assistant_response = normalize_reply_text(raw_pair[1])
     if not assistant_response:
         return None
 

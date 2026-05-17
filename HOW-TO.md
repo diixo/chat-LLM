@@ -60,7 +60,7 @@ trained checkpoints + tokenizer
 - Добавлены processed dataset builders:
   - `scripts/build_memory_summary_dataset.py`
   - `scripts/build_response_sft_dataset.py`
-- Добавлены shared helpers для JSONL parsing, speaker orientation и memory-fact normalization:
+- Добавлены shared helpers для JSONL parsing, speaker orientation, memory-fact normalization и общей текстовой normalization в стиле ParlAI:
   - `scripts/msc_processed_utils.py`
 - Добавлен processed dataset loader и collator с masking по `target_start_marker`:
   - `src/data/training_dataset.py`
@@ -241,7 +241,10 @@ python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_
 
 - берёт raw persona summary JSONL;
 - строит Stage A examples вида `dialogue history -> memory`;
+- если для speaker orientation нет annotated persona items, использует fallback из `metadata.init_personachat.init_personas[target_speaker_index]`;
+- приводит memory facts к единому third-person стилю вида `The user ...`, чтобы не было смеси `The user ...` и `I ...` в target memory;
 - формирует поля `text`, `target_start_marker`, `target_text`;
+- печатает `Annotated memory hits` и `Init persona fallbacks` в summary;
 - пишет processed JSONL в формате, пригодном для training_dataset.
 
 ### Шаг 4. Построить Stage B dataset: response SFT
@@ -284,6 +287,7 @@ python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid
 - для `session_1` использует `your persona:` строки как memory ответа;
 - берёт `session_2+` из raw dialogue examples;
 - для `session_2+` подтягивает gold memory из Stage A, построенного на local MSC persona-summary;
+- приводит текст ConvAI2 и MSC к общему sentence-case стилю по аналогии с ParlAI `normalize_reply`;
 - собирает всё в один processed корпус вида `memory + current_dialogue -> assistant_response`;
 - формирует поля `text`, `target_start_marker`, `target_text`.
 
@@ -292,6 +296,7 @@ python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid
 - `session_1` строится из raw ConvAI2, а не из local MSC persona-summary;
 - `--session1-input` нужен только для `session_1`, а `--memory` используется для `session_2+`;
 - ConvAI2 эпизоды связываются с MSC по `initial_data_id`, где train использует формат `train:ordered_XXXX`, а valid/test используют `valid_XXXX` / `test_XXXX`;
+- mixed-case проблема между ConvAI2 и MSC решается на уровне processed builders общей нормализацией текста, а не отдельным постобработчиком только для `session_1`;
 - локальная связка gold memory идёт со сдвигом по сессии:
   - `msc_personasummary/session_N` summarises memory для `msc_dialogue/session_{N+1}`
 - `--require-memory` отбрасывает примеры, для которых не найдено соответствующее memory или ConvAI2 persona.
@@ -319,12 +324,14 @@ python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid
 - Raw dialogue export valid: 2000 examples
 - Raw persona summary export train: 10285 examples
 - Raw persona summary export valid: 2000 examples
-- Processed memory summary train: 20466 examples, skipped 104
-- Processed memory summary valid: 3972 examples, skipped 28
-- Unified response SFT valid check: 29306 examples, memory hits 3972, memory misses 28, ConvAI2 hits 7801, ConvAI2 misses 0
-- Unified response SFT train: полный прогон ещё не обновлён после перехода на ConvAI2 `session_1`
+- Processed memory summary train: 20570 examples, skipped 0, annotated hits 20466, init persona fallbacks 104
+- Processed memory summary valid: 4000 examples, skipped 0, annotated hits 3972, init persona fallbacks 28
+- Unified response SFT train: 227984 examples, skipped 0, memory hits 18002, memory misses 0, ConvAI2 hits 131438, ConvAI2 misses 0
+- Unified response SFT valid: 29456 examples, skipped 0, memory hits 4000, memory misses 0, ConvAI2 hits 7801, ConvAI2 misses 0
 
-Также было проверено, что в итоговых `response_sft` файлах нет пустого `input.memory`, если сборка делается с `--require-memory`.
+Также было проверено, что в итоговых `response_sft` файлах нет пустого `input.memory`, если сборка делается с `--require-memory`, и что текст `session_1` из ConvAI2 больше не остаётся в raw lowercase относительно MSC.
+
+Отдельно после фикса преобразований memory facts было проверено, что в итоговой памяти больше не остаются случаи вида `I wear contacts.` вперемешку с `The user ...`; теперь такие записи приводятся к единому виду `The user wears contacts.`.
 
 ## Как использовать training_dataset.py в обучении
 

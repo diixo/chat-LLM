@@ -62,7 +62,7 @@ class BuildMemorySummaryDatasetTest(unittest.TestCase):
             [
                 "The user has two dogs.",
                 "The user's favorite hobby is running.",
-                "I run every morning.",
+                "The user runs every morning.",
             ],
         )
         self.assertEqual(processed_record["metadata"]["target_speaker_index"], 0)

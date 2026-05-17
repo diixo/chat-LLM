@@ -46,3 +46,15 @@ The model must output:
 
 ---
 
+## Current Local Pipeline
+
+The repository currently implements a local two-stage MSC/ConvAI2 pipeline rather than only a single-turn JSON extraction toy setup.
+
+- Stage A builds `previous_dialogue_history -> memory_summary` examples from local MSC persona-summary data.
+- Stage B builds `memory_summary + current_dialogue -> assistant_response` examples by combining ConvAI2 `session_1` with MSC `session_2+`.
+- `session_1` is recovered from ConvAI2 by `initial_data_id`, not by text matching.
+- Processed builders normalize ConvAI2 and MSC text into a common sentence-case style similar to ParlAI `normalize_reply`, so the final corpora do not mix raw lowercase ConvAI2 with case-sensitive MSC text.
+- Memory facts are normalized into a consistent third-person style such as `The user wears contacts.` instead of leaving a mix like `The user is very athletic.` and `I wear contacts.`.
+
+For the executable runbook and current build counts, see [HOW-TO.md](HOW-TO.md) and [HOW-TO-CMD.md](HOW-TO-CMD.md).
+
