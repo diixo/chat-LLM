@@ -105,47 +105,65 @@ python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid
 
 Выход:
 
-- `runs/stage_a_memory_summary`
+- `train_products/stage_a_memory_summary`
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir train_products/stage_a_memory_summary
 ```
 
-## 6. Обучить Stage B
+## 6. Дообучить Stage B
 
 Вход:
 
+- `train_products/stage_a_memory_summary`
 - `datasets/processed/msc_response_sft/train.jsonl`
 - `datasets/processed/msc_response_sft/valid.jsonl`
 
 Выход:
 
-- `runs/stage_b_response`
+- `train_products/stage_b_response`
 
 ```powershell
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
+python scripts/train_sft.py --model-name-or-path train_products/stage_a_memory_summary --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir train_products/stage_b_response
 ```
+
+Во второй стадии `train_sft.py` берёт чекпойнт после Stage A из `train_products/stage_a_memory_summary` и дообучает его на `msc_response_sft`.
 
 ## 7. Полный порядок основных команд подряд
 
+- 7.1 Подготовка токенизатора:
 ```powershell
 python scripts/verify_special_tokens.py --model-name-or-path gpt2
+```
 
+- 7.2 Сборка raw JSONL:
+```powershell
 python scripts/export_msc_dialogue.py --split train --output datasets/raw/msc/train.jsonl
 python scripts/export_msc_dialogue.py --split valid --output datasets/raw/msc/valid.jsonl
 
 python scripts/export_msc_personasummary.py --split train --output datasets/raw/msc/persona_summary_train.jsonl
 python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
+```
 
+- 7.3 Сборка processed Stage A:
+```powershell
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
+```
 
+- 7.4 Сборка processed Stage B:
+```powershell
 python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
 python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
-
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
-python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
+
+- 7.5 Последовательное обучение Stage A -> Stage B:
+```powershell
+python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir train_products/stage_a_memory_summary
+python scripts/train_sft.py --model-name-or-path train_products/stage_a_memory_summary --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir train_products/stage_b_response
+```
+
+Во второй команде `train_sft.py` берёт модель уже после Stage A из `train_products/stage_a_memory_summary` и дообучает её на Stage B.
 
 ## 8. Проверочный unified valid run
 
