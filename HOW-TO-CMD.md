@@ -157,6 +157,12 @@ python scripts/build_response_sft_dataset.py --session1-input data/convai2/train
 python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
+Можно пропустить этап сборки, так как в текущем репозитории уже есть собранные `datasets/processed/msc_memory_summary/...` и `datasets/processed/msc_response_sft/...` в архивах:
+- `datasets/processed/msc_memory_summary` в архиве `datasets/processed/msc_memory_summary.zip`
+- `datasets/processed/msc_response_sft` в архиве `datasets/processed/msc_response_sft.zip`
+Но если хочется проверить весь pipeline, то команды выше выполняют полный цикл от raw до processed.
+
+
 - 7.5 Последовательное обучение Stage A -> Stage B:
 ```powershell
 python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir train_products/stage_a_memory_summary
