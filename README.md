@@ -39,7 +39,7 @@ The model must output:
 | Dataset | Description | Link |
 |---|---|---|
 | **MSC (Multi-Session Chat)** | Multi-session dialogues by Meta with explicit per-persona memory annotations. Best match for our task. | https://parl.ai/projects/msc/ |
-| **PersonaChat** | Single-session persona-grounded dialogues. Persona facts are the ground-truth target for extraction. | https://huggingface.co/datasets/bavard/personachat_truecased or http://parl.ai/downloads/personachat/personachat.tgz |
+| **ConvAI2** | Single-session persona-grounded dialogues used to recover MSC session_1 by `initial_data_id`. | http://parl.ai/downloads/convai2/convai2_fix_723.tgz |
 | **MemoryBank / LONGMEM** | Dialogue datasets focused on long-term user memory and recall. | https://huggingface.co/datasets/Zxnii/MemoryBank-SiliconFriend |
 | **ShareGPT** | Real GPT-4 conversations. Used as base for synthetic annotation via teacher model. | https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered |
 | **UltraChat** | Large-scale synthetic multi-turn dialogues. Good base for augmentation. | https://huggingface.co/datasets/stingning/ultrachat |

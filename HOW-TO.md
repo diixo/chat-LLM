@@ -35,21 +35,22 @@ trained checkpoints + tokenizer
 По файлам это выглядит так:
 
 1. Источник данных:
-   - `data/msc_v0.1/msc/msc_dialogue`
-   - `data/msc_v0.1/msc/msc_personasummary`
+  - `data/msc_v0.1/msc/msc_dialogue`
+  - `data/msc_v0.1/msc/msc_personasummary`
+  - `data/convai2`
 2. Экспорт в единый raw-формат:
-   - `scripts/export_msc_dialogue.py`
-   - `scripts/export_msc_personasummary.py`
+  - `scripts/export_msc_dialogue.py`
+  - `scripts/export_msc_personasummary.py`
 3. Построение processed datasets:
-   - `scripts/build_memory_summary_dataset.py`
-   - `scripts/build_response_sft_dataset.py`
+  - `scripts/build_memory_summary_dataset.py`
+  - `scripts/build_response_sft_dataset.py`
 4. Подготовка примера для модели:
-   - `src/data/training_dataset.py`
+  - `src/data/training_dataset.py`
 5. Спецтокены пайплайна:
-   - `src/data/special_tokens.py`
-   - `scripts/verify_special_tokens.py`
+  - `src/data/special_tokens.py`
+  - `scripts/verify_special_tokens.py`
 6. Обучение:
-   - `scripts/train_sft.py`
+  - `scripts/train_sft.py`
 
 ## Что уже сделано в репозитории
 
@@ -251,6 +252,8 @@ python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_
 
 Вход:
 
+- `data/convai2/train_self_original_no_cands.txt`
+- `data/convai2/valid_self_original_no_cands.txt`
 - `datasets/raw/msc/train.jsonl`
 - `datasets/raw/msc/valid.jsonl`
 - `datasets/processed/msc_memory_summary/train.jsonl`
@@ -264,28 +267,34 @@ python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_
 Команды:
 
 ```powershell
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 Полезные параметры:
 
+- `--session1-input data/convai2/train_self_original_no_cands.txt`
 - `--memory datasets/processed/msc_memory_summary/train.jsonl`
 - `--require-memory`
 - `--max-examples 1000`
 
 Что делает этот шаг:
 
-- берёт raw dialogue examples;
-- подтягивает gold memory из Stage A;
-- строит примеры вида `memory + current_dialogue -> assistant_response`;
+- берёт `session_1` из raw ConvAI2 `self_original_no_cands`;
+- для `session_1` использует `your persona:` строки как memory ответа;
+- берёт `session_2+` из raw dialogue examples;
+- для `session_2+` подтягивает gold memory из Stage A, построенного на local MSC persona-summary;
+- собирает всё в один processed корпус вида `memory + current_dialogue -> assistant_response`;
 - формирует поля `text`, `target_start_marker`, `target_text`.
 
 Важно:
 
+- `session_1` строится из raw ConvAI2, а не из local MSC persona-summary;
+- `--session1-input` нужен только для `session_1`, а `--memory` используется для `session_2+`;
+- ConvAI2 эпизоды связываются с MSC по `initial_data_id`, где train использует формат `train:ordered_XXXX`, а valid/test используют `valid_XXXX` / `test_XXXX`;
 - локальная связка gold memory идёт со сдвигом по сессии:
   - `msc_personasummary/session_N` summarises memory для `msc_dialogue/session_{N+1}`
-- `--require-memory` отбрасывает примеры, для которых не найдено соответствующее memory.
+- `--require-memory` отбрасывает примеры, для которых не найдено соответствующее memory или ConvAI2 persona.
 
 ## Полный build train/valid
 
@@ -298,8 +307,8 @@ python scripts/export_msc_personasummary.py --split train --output datasets/raw/
 python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 ## Уже полученные размеры датасетов
@@ -312,10 +321,10 @@ python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.json
 - Raw persona summary export valid: 2000 examples
 - Processed memory summary train: 20466 examples, skipped 104
 - Processed memory summary valid: 3972 examples, skipped 28
-- Processed response SFT train: 96067 examples, memory hits 17913, memory misses 89
-- Processed response SFT valid: 21505 examples, memory hits 3972, memory misses 28
+- Unified response SFT valid check: 29306 examples, memory hits 3972, memory misses 28, ConvAI2 hits 7801, ConvAI2 misses 0
+- Unified response SFT train: полный прогон ещё не обновлён после перехода на ConvAI2 `session_1`
 
-Также было проверено, что в итоговых `response_sft` train/valid файлах нет пустого `input.memory`, если сборка делается с `--require-memory`.
+Также было проверено, что в итоговых `response_sft` файлах нет пустого `input.memory`, если сборка делается с `--require-memory`.
 
 ## Как использовать training_dataset.py в обучении
 
@@ -423,10 +432,10 @@ msc_personasummary txt
 ### Stage B
 
 ```text
-msc_dialogue txt
--> export_msc_dialogue.py
--> datasets/raw/msc/*.jsonl
-+ gold memory from datasets/processed/msc_memory_summary/*.jsonl
+convai2/session_1 + msc_dialogue/session_2+
+-> train_self_original_no_cands.txt / valid_self_original_no_cands.txt + export_msc_dialogue.py
+-> data/convai2/*.txt + datasets/raw/msc/*.jsonl
++ ConvAI2 persona lines for session_1 + gold memory from datasets/processed/msc_memory_summary/*.jsonl for session_2+
 -> build_response_sft_dataset.py
 -> datasets/processed/msc_response_sft/*.jsonl
 -> training_dataset.py
@@ -458,8 +467,8 @@ python scripts/export_msc_personasummary.py --split valid --output datasets/raw/
 ```powershell
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
 
 4. Обучить Stage A:
@@ -473,3 +482,5 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/proc
 ```powershell
 python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
+
+Здесь предполагается один основной unified dataset и обучение сразу на нём.

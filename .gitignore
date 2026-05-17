@@ -15,10 +15,11 @@ env.bak/
 
 log.txt
 
-data/personachat-truecased/
+data/convai2/
 
 output/
 models/
 datasets/
 train_products/
 train_product/
+data/personachat-truecased/

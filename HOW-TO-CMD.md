@@ -65,6 +65,8 @@ python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_
 
 Вход:
 
+- `data/convai2/train_self_original_no_cands.txt`
+- `data/convai2/valid_self_original_no_cands.txt`
 - `datasets/raw/msc/train.jsonl`
 - `datasets/raw/msc/valid.jsonl`
 - `datasets/processed/msc_memory_summary/train.jsonl`
@@ -76,9 +78,15 @@ python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_
 - `datasets/processed/msc_response_sft/valid.jsonl`
 
 ```powershell
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
 ```
+
+Примечание:
+
+- `--session1-input` закрывает `session_1` из raw ConvAI2 `self_original_no_cands`.
+- `--input` даёт `session_2+` из local MSC dialogue.
+- `--memory` нужен для gold memory на `session_2+`, который строится из local MSC persona-summary.
 
 ## 5. Обучить Stage A
 
@@ -110,27 +118,29 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/proc
 python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
 
-## 7. Полный порядок команд подряд
+## 7. Полный порядок основных команд подряд
 
 ```powershell
 python scripts/verify_special_tokens.py --model-name-or-path gpt2
+
 python scripts/export_msc_dialogue.py --split train --output datasets/raw/msc/train.jsonl
 python scripts/export_msc_dialogue.py --split valid --output datasets/raw/msc/valid.jsonl
+
 python scripts/export_msc_personasummary.py --split train --output datasets/raw/msc/persona_summary_train.jsonl
 python scripts/export_msc_personasummary.py --split valid --output datasets/raw/msc/persona_summary_valid.jsonl
+
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_train.jsonl --output datasets/processed/msc_memory_summary/train.jsonl
 python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_valid.jsonl --output datasets/processed/msc_memory_summary/valid.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/train_self_original_no_cands.txt --input datasets/raw/msc/train.jsonl --memory datasets/processed/msc_memory_summary/train.jsonl --require-memory --output datasets/processed/msc_response_sft/train.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid.jsonl
+
 python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_memory_summary/train.jsonl --valid-file datasets/processed/msc_memory_summary/valid.jsonl --output-dir runs/stage_a_memory_summary
 python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/processed/msc_response_sft/train.jsonl --valid-file datasets/processed/msc_response_sft/valid.jsonl --output-dir runs/stage_b_response
 ```
 
-## 8. Узкие тесты на маленьком подмножестве
+## 8. Проверочный unified valid run
 
 ```powershell
-python scripts/export_msc_personasummary.py --split train --session 1 --max-examples 100 --output datasets/raw/msc/persona_summary_session_1_sample.jsonl
-python scripts/build_memory_summary_dataset.py --input datasets/raw/msc/persona_summary_session_1_sample.jsonl --output datasets/processed/msc_memory_summary/session_1_sample.jsonl
-python scripts/export_msc_dialogue.py --split train --session 2 --max-examples 100 --output datasets/raw/msc/dialogue_session_2_sample.jsonl
-python scripts/build_response_sft_dataset.py --input datasets/raw/msc/dialogue_session_2_sample.jsonl --memory datasets/processed/msc_memory_summary/session_1_sample.jsonl --require-memory --output datasets/processed/msc_response_sft/session_2_sample.jsonl
+python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid_convai2_session1_check.jsonl
 ```
