@@ -153,7 +153,37 @@ python scripts/train_sft.py --model-name-or-path gpt2 --train-file datasets/proc
 python scripts/build_response_sft_dataset.py --session1-input data/convai2/valid_self_original_no_cands.txt --input datasets/raw/msc/valid.jsonl --memory datasets/processed/msc_memory_summary/valid.jsonl --require-memory --output datasets/processed/msc_response_sft/valid_convai2_session1_check.jsonl
 ```
 
-## 9. Актуальные результаты сборки
+## 9. Тесты
+
+Запустить все тесты сразу:
+
+```powershell
+python -m unittest discover -s tests
+```
+
+Запустить отдельные тесты:
+
+```powershell
+python -m unittest discover -s tests -p "test_build_memory_summary_dataset.py"
+python -m unittest discover -s tests -p "test_convai2_session1_mapping.py"
+python -m unittest discover -s tests -p "test_text_normalization.py"
+python -m unittest discover -s tests -p "test_role_assignment.py"
+```
+
+Что проверяет каждый тест:
+
+- `test_build_memory_summary_dataset.py` проверяет fallback в Stage A: если для нужной speaker orientation нет annotated persona items, builder берёт память из `metadata.init_personachat.init_personas[target_speaker_index]` и нормализует её в единый `The user ...` вид.
+- `test_convai2_session1_mapping.py` проверяет, что `session_1` корректно восстанавливается из ConvAI2 по `initial_data_id`, что raw MSC history совпадает с соответствующим ConvAI2 episode после нормализации текста, и что Stage B enrichment проставляет правильные metadata поля.
+- `test_text_normalization.py` проверяет sentence-case нормализацию в стиле ParlAI `normalize_reply`, нормализацию ConvAI2 реплик и persona lines при загрузке, нормализацию MSC dialogue turns и базовое переписывание first-person facts в `The user ...`.
+- `test_role_assignment.py` проверяет, что конкретные известные фразы действительно получают правильные роли `user` и `assistant`: отдельно на builder-уровне для ConvAI2, на raw MSC history после ориентации по speaker labels и на финальном processed Stage B артефакте.
+
+Примечание:
+
+- `test_build_memory_summary_dataset.py` и `test_text_normalization.py` в основном проверяют функции и могут работать без полного локального набора собранных артефактов.
+- `test_convai2_session1_mapping.py` требует локальные файлы `data/convai2/...` и `datasets/raw/msc/...`.
+- `test_role_assignment.py` требует локальный ConvAI2, raw MSC и уже собранные `datasets/processed/msc_response_sft/train.jsonl` и `valid.jsonl`; если файлов нет, тест будет `skip`, а не `fail`.
+
+## 10. Актуальные результаты сборки
 
 - Stage A train: `20570` examples, `0 skipped`, `20466` annotated hits, `104` init persona fallbacks.
 - Stage A valid: `4000` examples, `0 skipped`, `3972` annotated hits, `28` init persona fallbacks.
