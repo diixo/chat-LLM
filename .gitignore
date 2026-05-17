@@ -15,6 +15,7 @@ env.bak/
 
 log.txt
 
+data/personachat-truecased/
 
 output/
 models/
